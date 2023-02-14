@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::components::{Movable, Velocity};
+use crate::components::{Explosion, ExplosionTimer, ExplosionToSpawn, Movable, Velocity};
 use crate::enemy::EnemyPlugin;
 use crate::player::PlayerPlugin;
 
@@ -17,9 +17,11 @@ const ENEMY_SPRITE: &str = "enemy_a_01.png";
 const ENEMY_SIZE: (f32, f32) = (144., 75.);
 const ENEMY_LASER_SPRITE: &str = "laser_b_01.png";
 const ENEMY_LASER_SIZE: (f32, f32) = (9., 54.);
+const EXPLOSION_SHEET: &str = "explo_a_sheet.png";
 const SPRITE_SCALE: f32 = 0.5;
 const TIME_STEP: f32 = 1. / 60.;
 const BASE_SPEED: f32 = 500.;
+const EXPLOSION_LEN: usize = 16;
 
 
 #[derive(Resource)]
@@ -34,6 +36,7 @@ struct GameTextures {
     player_laser: Handle<Image>,
     enemy: Handle<Image>,
     enemy_laser: Handle<Image>,
+    explosion: Handle<TextureAtlas>,
 }
 
 
@@ -54,26 +57,38 @@ fn main() {
         .add_plugin(EnemyPlugin)
         .add_startup_system(setup_system)
         .add_system(movable_system)
+        .add_system(explosion_to_spawn_system)
+        .add_system(explosion_animation_system)
         .run();
 }
 
 
-fn setup_system(mut commands: Commands, mut windows: ResMut<Windows>, assets: Res<AssetServer>) {
+fn setup_system(
+    mut commands: Commands,
+    mut windows: ResMut<Windows>,
+    mut atlases: ResMut<Assets<TextureAtlas>>,
+    assets: Res<AssetServer>
+) {
     commands.spawn(Camera2dBundle::default());
 
     let window = windows.get_primary_mut().unwrap();
     let (win_w, win_h) = (window.height(), window.width());
 
-    commands.insert_resource(WinSize {
-        w: win_w,
-        h: win_h,
-    });
+    commands.insert_resource(WinSize { w: win_w, h: win_h, });
+
+    let explosion_handle = assets.load(EXPLOSION_SHEET);
+    let explosion_atlas = TextureAtlas::from_grid(
+        explosion_handle,
+        Vec2::new(64., 64.),
+        4, 4, None, None,
+    );
 
     commands.insert_resource(GameTextures {
         player: assets.load(PLAYER_SPRITE),
         player_laser: assets.load(PLAYER_LASER_SPRITE),
         enemy: assets.load(ENEMY_SPRITE),
         enemy_laser: assets.load(ENEMY_LASER_SPRITE),
+        explosion: atlases.add(explosion_atlas),
     });
 }
 
@@ -100,3 +115,39 @@ fn movable_system(
 }
 
 
+fn explosion_to_spawn_system(
+    mut commands: Commands,
+    textures: Res<GameTextures>,
+    query: Query<(Entity, &ExplosionToSpawn)>
+) {
+    for (spawn_entity, explosion_spawn) in query.iter() {
+        commands.spawn(SpriteSheetBundle {
+            texture_atlas: textures.explosion.clone(),
+            transform: Transform {
+                translation: explosion_spawn.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+            .insert(Explosion)
+            .insert(ExplosionTimer::default());
+        commands.entity(spawn_entity).despawn();
+    }
+}
+
+fn explosion_animation_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut ExplosionTimer, &mut TextureAtlasSprite), With<Explosion>>
+) {
+    for (entity, mut timer, mut sprite) in query.iter_mut() {
+        timer.0.tick(time.delta());
+        if timer.0.finished() {
+            sprite.index += 1;
+
+            if sprite.index >= EXPLOSION_LEN {
+                commands.entity(entity).despawn();
+            }
+        }
+    }
+}

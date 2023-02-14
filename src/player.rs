@@ -2,7 +2,7 @@ use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use bevy::sprite::collide_aabb::collide;
 use crate::{GameTextures, PLAYER_LASER_SIZE, PLAYER_SIZE, SPRITE_SCALE, WinSize};
-use crate::components::{Enemy, FromPlayer, Laser, Movable, Player, SpriteSize, Velocity};
+use crate::components::{Enemy, ExplosionToSpawn, FromPlayer, Laser, Movable, Player, SpriteSize, Velocity};
 
 
 pub struct PlayerPlugin;
@@ -106,6 +106,7 @@ fn player_laser_hit_enemy_system(
             if let Some(_) = collision {
                 commands.entity(enemy_entity).despawn();
                 commands.entity(laser_entity).despawn();
+                commands.spawn_empty().insert(ExplosionToSpawn(enemy_tf.translation.clone()));
             }
         }
     }

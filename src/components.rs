@@ -35,3 +35,18 @@ pub struct Enemy;
 
 #[derive(Component)]
 pub struct FromEnemy;
+
+#[derive(Component)]
+pub struct Explosion;
+
+#[derive(Component)]
+pub struct ExplosionToSpawn(pub Vec3);
+
+#[derive(Component)]
+pub struct ExplosionTimer(pub Timer);
+
+impl Default for ExplosionTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(0.05, TimerMode::Repeating))
+    }
+}
