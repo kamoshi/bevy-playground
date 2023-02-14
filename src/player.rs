@@ -1,6 +1,8 @@
+use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
-use crate::{BASE_SPEED, GameTextures, PLAYER_SIZE, SPRITE_SCALE, TIME_STEP, WinSize};
-use crate::components::{Movable, Player, Velocity};
+use bevy::sprite::collide_aabb::collide;
+use crate::{GameTextures, PLAYER_LASER_SIZE, PLAYER_SIZE, SPRITE_SCALE, WinSize};
+use crate::components::{Enemy, FromPlayer, Laser, Movable, Player, SpriteSize, Velocity};
 
 
 pub struct PlayerPlugin;
@@ -10,7 +12,8 @@ impl Plugin for PlayerPlugin {
         app
             .add_startup_system_to_stage(StartupStage::PostStartup, player_spawn_system)
             .add_system(player_keyboard_event_system)
-            .add_system(player_fire_system);
+            .add_system(player_fire_system)
+            .add_system(player_laser_hit_enemy_system);
     }
 }
 
@@ -31,6 +34,7 @@ fn player_spawn_system(
         ..Default::default()
     })
         .insert(Player)
+        .insert(SpriteSize::from(PLAYER_SIZE))
         .insert(Movable { auto_despawn: false })
         .insert(Velocity { x: 0., y: 0. });
 }
@@ -70,11 +74,39 @@ fn player_fire_system(
                     },
                     ..Default::default()
                 })
+                    .insert(Laser)
+                    .insert(FromPlayer)
+                    .insert(SpriteSize::from(PLAYER_LASER_SIZE))
                     .insert(Movable { auto_despawn: true })
                     .insert(Velocity { x: 0., y: 1. });
             };
             spawn_laser(x_offset);
             spawn_laser(-x_offset)
+        }
+    }
+}
+
+fn player_laser_hit_enemy_system(
+    mut commands: Commands,
+    laser_query: Query<(Entity, &Transform, &SpriteSize), (With<Laser>, With<FromPlayer>)>,
+    enemy_query: Query<(Entity, &Transform, &SpriteSize), With<Enemy>>,
+) {
+    for (laser_entity, laser_tf, laser_size) in laser_query.iter() {
+        let laser_scale = Vec2::from(laser_tf.scale.xy());
+        for (enemy_entity, enemy_tf, enemy_size) in enemy_query.iter() {
+            let enemy_scale = Vec2::from(enemy_tf.scale.xy());
+
+            let collision = collide(
+                laser_tf.translation,
+                laser_size.0 * laser_scale,
+                enemy_tf.translation,
+                enemy_size.0 * enemy_scale,
+            );
+
+            if let Some(_) = collision {
+                commands.entity(enemy_entity).despawn();
+                commands.entity(laser_entity).despawn();
+            }
         }
     }
 }

@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 use crate::components::{Movable, Velocity};
+use crate::enemy::EnemyPlugin;
 use crate::player::PlayerPlugin;
 
-mod player;
 mod components;
+mod player;
+mod enemy;
 
 const HEIGHT: f32 = 676.0;
 const WIDTH: f32 = 598.0;
@@ -11,6 +13,10 @@ const PLAYER_SPRITE: &str = "player_a_01.png";
 const PLAYER_SIZE: (f32, f32) = (144., 75.);
 const PLAYER_LASER_SPRITE: &str = "laser_a_01.png";
 const PLAYER_LASER_SIZE: (f32, f32) = (9., 54.);
+const ENEMY_SPRITE: &str = "enemy_a_01.png";
+const ENEMY_SIZE: (f32, f32) = (144., 75.);
+const ENEMY_LASER_SPRITE: &str = "laser_b_01.png";
+const ENEMY_LASER_SIZE: (f32, f32) = (9., 54.);
 const SPRITE_SCALE: f32 = 0.5;
 const TIME_STEP: f32 = 1. / 60.;
 const BASE_SPEED: f32 = 500.;
@@ -26,6 +32,8 @@ pub struct WinSize {
 struct GameTextures {
     player: Handle<Image>,
     player_laser: Handle<Image>,
+    enemy: Handle<Image>,
+    enemy_laser: Handle<Image>,
 }
 
 
@@ -43,6 +51,7 @@ fn main() {
             ..Default::default()
         }))
         .add_plugin(PlayerPlugin)
+        .add_plugin(EnemyPlugin)
         .add_startup_system(setup_system)
         .add_system(movable_system)
         .run();
@@ -63,6 +72,8 @@ fn setup_system(mut commands: Commands, mut windows: ResMut<Windows>, assets: Re
     commands.insert_resource(GameTextures {
         player: assets.load(PLAYER_SPRITE),
         player_laser: assets.load(PLAYER_LASER_SPRITE),
+        enemy: assets.load(ENEMY_SPRITE),
+        enemy_laser: assets.load(ENEMY_LASER_SPRITE),
     });
 }
 
