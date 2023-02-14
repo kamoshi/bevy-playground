@@ -22,6 +22,7 @@ const SPRITE_SCALE: f32 = 0.5;
 const TIME_STEP: f32 = 1. / 60.;
 const BASE_SPEED: f32 = 500.;
 const EXPLOSION_LEN: usize = 16;
+const ENEMY_MAX: u32 = 3;
 
 
 #[derive(Resource)]
@@ -38,6 +39,9 @@ struct GameTextures {
     enemy_laser: Handle<Image>,
     explosion: Handle<TextureAtlas>,
 }
+
+#[derive(Resource)]
+pub struct EnemyCount(u32);
 
 
 fn main() {
@@ -90,6 +94,8 @@ fn setup_system(
         enemy_laser: assets.load(ENEMY_LASER_SPRITE),
         explosion: atlases.add(explosion_atlas),
     });
+
+    commands.insert_resource(EnemyCount(0));
 }
 
 fn movable_system(

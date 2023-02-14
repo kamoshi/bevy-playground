@@ -1,7 +1,8 @@
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 use bevy::sprite::collide_aabb::collide;
-use crate::{GameTextures, PLAYER_LASER_SIZE, PLAYER_SIZE, SPRITE_SCALE, WinSize};
+use bevy::utils::HashSet;
+use crate::{EnemyCount, GameTextures, PLAYER_LASER_SIZE, PLAYER_SIZE, SPRITE_SCALE, WinSize};
 use crate::components::{Enemy, ExplosionToSpawn, FromPlayer, Laser, Movable, Player, SpriteSize, Velocity};
 
 
@@ -88,12 +89,16 @@ fn player_fire_system(
 
 fn player_laser_hit_enemy_system(
     mut commands: Commands,
+    mut enemy_count: ResMut<EnemyCount>,
     laser_query: Query<(Entity, &Transform, &SpriteSize), (With<Laser>, With<FromPlayer>)>,
     enemy_query: Query<(Entity, &Transform, &SpriteSize), With<Enemy>>,
 ) {
+    let mut despawned = HashSet::<Entity>::new();
     for (laser_entity, laser_tf, laser_size) in laser_query.iter() {
+        if despawned.contains(&laser_entity) {continue};
         let laser_scale = Vec2::from(laser_tf.scale.xy());
         for (enemy_entity, enemy_tf, enemy_size) in enemy_query.iter() {
+            if despawned.contains(&enemy_entity) || despawned.contains(&laser_entity) {continue};
             let enemy_scale = Vec2::from(enemy_tf.scale.xy());
 
             let collision = collide(
@@ -106,7 +111,10 @@ fn player_laser_hit_enemy_system(
             if let Some(_) = collision {
                 commands.entity(enemy_entity).despawn();
                 commands.entity(laser_entity).despawn();
+                despawned.insert(enemy_entity);
+                despawned.insert(laser_entity);
                 commands.spawn_empty().insert(ExplosionToSpawn(enemy_tf.translation.clone()));
+                enemy_count.0 -= 1;
             }
         }
     }
